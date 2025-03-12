@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../../uwdocs/spring_2025/ece455/esp_test"
+		},
+		{
+			"name": "TestEsp32",
+			"path": "../TestEsp32"
+		},
+		{
+			"name": "Magmattic ESP32",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
