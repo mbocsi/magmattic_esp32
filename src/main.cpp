@@ -7,27 +7,32 @@
 
 using namespace websockets;
 
-const char * SSID = (char *) "UWNet";
-const char * PASSWORD = (char *) "";
+#define PGA 1                     // Programmable Gain = 1
+#define VREF 2.50                 // Internal reference of 2.5V
+#define VFSR VREF/PGA             
+#define FSR (((long int)1<<23)-1) 
+
+const char * SSID = "UWNet";
+const char * PASSWORD = "";
 const char * WEBSOCKET_ADDR = "10.141.235.101";
-const int WEBSOCKET_PORT = 44444;
-const double VREF = 2.5;
+const uint8_t WEBSOCKET_PORT = 44444;
 const double ADC_RESOLUTION = (double)(VREF/pow(2,31));
 const uint8_t VOLTAGE_RESOLUTION = 9;
-char * spi_rx_buff_ptr;
-signed long adc_reading = 0;
+volatile char * spi_rx_buff_ptr;
+volatile int32_t adc_reading = 0;
 double adc_voltage;
-int buf_size = 32; // Samples
+volatile size_t buf_size = 32; // Samples
 double voltage_buf[32];
-short voltage_buf_idx = 0;
-int sample_rate = 1000; // Hz
+volatile size_t voltage_buf_idx = 0;
+uint16_t sample_rate = 1000; // Hz
 
 WebsocketsClient client;
 ads1262 adc;
 
 void initWifi();
 void recv(WebsocketsMessage message);
-void send_voltage(double * buf, short buf_size);
+void sendVoltage(double * buf, short buf_size);
+void readVoltage();
 
 void setup() {
   Serial.begin(115200);
@@ -58,6 +63,8 @@ void setup() {
   pinMode(ADS1262_START_PIN, OUTPUT);               // start 
   pinMode(ADS1262_PWDN_PIN, OUTPUT);                // Power down output  
 
+  attachInterrupt(digitalPinToInterrupt(ADS1262_DRDY_PIN), readVoltage, FALLING); // readVoltage when ready
+
   // Initialize ADC
   adc.ads1262_Init();
 
@@ -72,31 +79,30 @@ void loop() {
     client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/");
     client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); 
   }
-  for(int i = 0; i < buf_size; i++){
-
-  }
-  if((digitalRead(ADS1262_DRDY_PIN)) == LOW){
-    spi_rx_buff_ptr = adc.ads1262_Read_Data();      // read 6 bytes conversion register
-    adc_reading = (signed long) ((unsigned long)spi_rx_buff_ptr[1]) << 24  // Extract value from buffer
-      | ((unsigned long)spi_rx_buff_ptr[2]) << 16 
-      | ((unsigned long)spi_rx_buff_ptr[3]) << 8 
-      | ((unsigned long)spi_rx_buff_ptr[4]);
-    adc_voltage = ADC_RESOLUTION * adc_reading; // Convert to volts
-    voltage_buf[voltage_buf_idx++] = adc_voltage;
-    if(voltage_buf_idx >= buf_size) {
-      voltage_buf_idx = 0;
-      send_voltage(voltage_buf, buf_size);
-    }
-  }
-  // Serial.printf("Voltage Reading: %lfV\n", adc_voltage);
+  delay(1000);
 }
+
+void readVoltage() {
+  spi_rx_buff_ptr = adc.ads1262_Read_Data();      // read 6 bytes conversion register
+  adc_reading = (int32_t) ((uint32_t)spi_rx_buff_ptr[1]) << 24  // Extract value from buffer
+    | ((uint32_t)spi_rx_buff_ptr[2]) << 16 
+    | ((uint32_t)spi_rx_buff_ptr[3]) << 8 
+    | ((uint32_t)spi_rx_buff_ptr[4]);
+  adc_voltage = ADC_RESOLUTION * adc_reading; // Convert to volts
+  voltage_buf[voltage_buf_idx++] = adc_voltage;
+  if(voltage_buf_idx >= buf_size) {
+    voltage_buf_idx = 0;
+    sendVoltage(voltage_buf, buf_size);
+  }
+};
 
 void recv(WebsocketsMessage message) {
   Serial.print("recv - ");
   Serial.println(message.data());
 };
 
-void send_voltage(double * buf, short buf_size) {
+void sendVoltage(double * buf, short buf_size) {
+  // TODO: Fix this shitshow
   char val[16];
   Serial.println("sending buffer!");
   for(int i = 0; i < buf_size; i++) {
