@@ -62,7 +62,7 @@ void ads1262::ads1262_Init()
   delay(10);
   ads1262_Reg_Write(MODE1, 0x80);	//Ch 1 enabled, gain 6, connected to electrode in
   delay(10);
-  ads1262_Reg_Write(MODE2, 0x08); // Set sampling rate to 1200 SPS	
+  ads1262_Reg_Write(MODE2, 0x09); // Set sampling rate to 1200 SPS	
   delay(10);
   ads1262_Reg_Write(INPMUX, 0x01);	
   delay(10);  
