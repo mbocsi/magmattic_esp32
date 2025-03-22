@@ -23,6 +23,7 @@
 #define ads1262_h
 
 #include "Arduino.h"
+#include <map>
 
 #define CONFIG_SPI_MASTER_DUMMY   0xFF
 
@@ -75,23 +76,23 @@ const int ADS1262_PWDN_PIN = 26;
 #define	ADC2FSC1	0x1A
 
 
-
-class ads1262
+class Ads1262
 {
   public:
-    static void ads1262_Init(void);
-    static void ads1262_Reset(void);
-    static void ads1262_Reg_Write (unsigned char READ_WRITE_ADDRESS, unsigned char DATA);
-    static void ads1262_Reg_Read (unsigned char READ_WRITE_ADDRESS);
-    static void ads1262_SPI_Command_Data(unsigned char data_in);
-    static void ads1262_Disable_Start(void);
-    static void ads1262_Enable_Start(void);
-    static void ads1262_Hard_Stop (void);
-    static void ads1262_Start_Data_Conv_Command (void);
-    static void ads1262_Soft_Stop (void);
-    static void ads1262_Start_Read_Data_Continuous (void);
-    static void ads1262_Stop_Read_Data_Continuous (void);
-    static char* ads1262_Read_Data(void);
+    static void init(void);
+    static void reset(void);
+    static void reg_write (unsigned char READ_WRITE_ADDRESS, unsigned char DATA);
+    static void reg_read (unsigned char READ_WRITE_ADDRESS);
+    static void SPI_command_data(unsigned char data_in);
+    static void disable_start(void);
+    static void enable_start(void);
+    static void hard_stop (void);
+    static void start_data_conv_command (void);
+    static void soft_stop (void);
+    // static void start_read_data_continuous (void);
+    // static void stop_read_data_continuous (void);
+    static char* read_data(void);
+    static void set_sample_rate(const unsigned int rate);
 };
 
 #endif

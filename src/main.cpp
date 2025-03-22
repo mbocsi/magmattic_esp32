@@ -5,6 +5,7 @@
 #include <ads1262.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
+#include <main.h>
 
 #define PGA 1                     // Programmable Gain = 1
 #define VREF 2.50                 // Internal reference of 2.5V
@@ -14,11 +15,11 @@
 using namespace websockets;
 
 // Wifi
-const char * SSID = "UWNet";
+const char * SSID = "magpi";
 const char * PASSWORD = "";
 
 // Websockets
-const char * WEBSOCKET_ADDR = "192.168.1.58";
+const char * WEBSOCKET_ADDR = "192.168.4.1";
 const uint32_t WEBSOCKET_PORT = 44444;
 
 // ADC
@@ -27,29 +28,22 @@ volatile char * spi_rx_buff_ptr;
 volatile int32_t adc_reading = 0;
 double adc_voltage;
 volatile size_t voltage_buf_size = 32; // Samples
-double voltage_buf[32];
+double *voltage_buf = (double *) malloc(sizeof(double) * 32);
 volatile size_t voltage_buf_idx = 0;
-uint16_t sample_rate = 1200; // Hz
 
 // Data sending
 volatile bool sendReady = false; // Flag
-char outJson[512];
+char outJson[1024]; // Enough for 64 buffer size
 
 WebsocketsClient client;
-ads1262 adc;
-
-// function definitions (should probably be in a header file)
-void initWifi();
-// void scanWifi();
-void recv(WebsocketsMessage message);
-void send(double * buf, short buf_size);
-void readVoltage();
+Ads1262 adc;
 
 void setup() {
   Serial.begin(115200);
   delay(200);
 
   // Connect Wifi
+  scanWifi();
   initWifi(); 
   delay(100);
 
@@ -67,15 +61,15 @@ void setup() {
   }
 
   // Initialize pins
-  pinMode(ADS1262_DRDY_PIN, INPUT);                  //data ready input line
-  pinMode(ADS1262_CS_PIN, OUTPUT);                   //chip enable output line
+  pinMode(ADS1262_DRDY_PIN, INPUT);                 // data ready input line
+  pinMode(ADS1262_CS_PIN, OUTPUT);                  // chip enable output line
   pinMode(ADS1262_START_PIN, OUTPUT);               // start 
   pinMode(ADS1262_PWDN_PIN, OUTPUT);                // Power down output  
   attachInterrupt(digitalPinToInterrupt(ADS1262_DRDY_PIN), readVoltage, FALLING); // readVoltage when ready
   Serial.println("Pins and interrupts configured");
 
   // Initialize ADC
-  adc.ads1262_Init();
+  adc.init();
   Serial.println("ADC initialized");
 
   Serial.println("Setup done");
@@ -117,7 +111,7 @@ void readVoltage() {
   - Data is transmitted MSB first.
   - If "Repeat Data" mode is enabled, additional repeated bytes may follow.
   */
-  spi_rx_buff_ptr = adc.ads1262_Read_Data();      // read 6 bytes conversion register
+  spi_rx_buff_ptr = adc.read_data();      // read 6 bytes conversion register
   adc_reading = (int32_t) ((uint32_t)spi_rx_buff_ptr[1]) << 24  // Extract value from buffer
     | ((uint32_t)spi_rx_buff_ptr[2]) << 16 
     | ((uint32_t)spi_rx_buff_ptr[3]) << 8 
@@ -133,6 +127,31 @@ void readVoltage() {
 void recv(WebsocketsMessage message) {
   Serial.print("recv - ");
   Serial.println(message.data());
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, message.data());
+  if (error) {
+    Serial.print("deserializeJson() returned ");
+    Serial.println(error.c_str());
+    return;
+  }
+  long sample_rate = doc["payload"]["sample_rate"];
+  if(sample_rate) {
+    adc.set_sample_rate(sample_rate);
+    Serial.printf("Set sample rate: %d\n", sample_rate);
+  }
+
+  long buffer_size = doc["payload"]["Nbuf"];
+  if(buffer_size) {
+    free(voltage_buf);
+    voltage_buf = (double *) malloc(sizeof(double) * buffer_size);
+    if(!voltage_buf) {
+      Serial.printf("malloc of size %d failed!\n", buffer_size);
+      return;
+    }
+    voltage_buf_size = buffer_size;
+    voltage_buf_idx = 0;
+    Serial.printf("Set buffer size: %d\n", buffer_size); 
+  }
 };
 
 void send(double * buf, short buf_size) {
@@ -169,24 +188,24 @@ void initWifi() {
   Serial.println(WiFi.localIP());
 }
 
-// void scanWifi() {
-//   int n = WiFi.scanNetworks();
-//   if (n == 0) {
-//     Serial.println("no network found");
-//   } else {
-//     Serial.print("networks found: ");
-//     Serial.println(n);
-//     for (int i = 0; i < n; i++) {
-//       Serial.print(i + 1);
-//       Serial.print(": ");
-//       Serial.print(WiFi.SSID(i));
-//       Serial.print(" (");
-//       Serial.print(WiFi.RSSI(i));
-//       Serial.print("dBm)");
-//       Serial.print(" channel ");
-//       Serial.print(WiFi.channel(i));
-//       Serial.print(" encryption ");
-//       Serial.println(WiFi.encryptionType(i));
-//     }
-//   }
-// }
+void scanWifi() {
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    Serial.println("no network found");
+  } else {
+    Serial.print("networks found: ");
+    Serial.println(n);
+    for (int i = 0; i < n; i++) {
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print("dBm)");
+      Serial.print(" channel ");
+      Serial.print(WiFi.channel(i));
+      Serial.print(" encryption ");
+      Serial.println(WiFi.encryptionType(i));
+    }
+  }
+}

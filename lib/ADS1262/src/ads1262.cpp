@@ -23,7 +23,9 @@
 #include <ads1262.h>
 #include <SPI.h>
 
-char* ads1262::ads1262_Read_Data()
+std::map<int, int> SAMPLE_RATE{{100, 0x07}, {400, 0x08}, {1200, 0x09}, {2400, 0x0A}, {4800, 0x0B}, {7200, 0x0C}};
+
+char* Ads1262::read_data()
 {
   static char SPI_Dummy_Buff[6];
   digitalWrite(ADS1262_CS_PIN, LOW);
@@ -38,7 +40,19 @@ char* ads1262::ads1262_Read_Data()
 	return SPI_Dummy_Buff;
 }
 
-void ads1262::ads1262_Init()
+void Ads1262::set_sample_rate(const unsigned int rate) {
+  if(SAMPLE_RATE.find(rate) == SAMPLE_RATE.end()) {
+    return;
+  }
+  
+  int code = SAMPLE_RATE[rate];
+  hard_stop();
+  reg_write(MODE2, code); 
+  delay(10);
+  enable_start();
+}
+
+void Ads1262::init()
 {
   // start the SPI library:
   SPI.begin();
@@ -48,70 +62,70 @@ void ads1262::ads1262_Init()
   // Selecting 1Mhz clock for SPI
   SPI.setClockDivider(SPI_CLOCK_DIV8); // DIV16
 
-  ads1262_Reset();
+  reset();
   delay(100);
   
-  ads1262_Hard_Stop();
+  hard_stop();
   delay(350);
   
-  ads1262_Reg_Write(POWER, 0x11);
+  reg_write(POWER, 0x11);
   delay(10);
-  ads1262_Reg_Write(INTERFACE, 0x05);	//Lead-off comp off, test signal disabled
+  reg_write(INTERFACE, 0x05);	//Lead-off comp off, test signal disabled
   delay(10);
-  ads1262_Reg_Write(MODE0, 0x00);
+  reg_write(MODE0, 0x00);
   delay(10);
-  ads1262_Reg_Write(MODE1, 0x80);	//Ch 1 enabled, gain 6, connected to electrode in
+  reg_write(MODE1, 0x80);	//Ch 1 enabled, gain 6, connected to electrode in
   delay(10);
-  ads1262_Reg_Write(MODE2, 0x09); // Set sampling rate to 1200 SPS	
+  reg_write(MODE2, 0x09); // Set sampling rate to 1200 SPS	
   delay(10);
-  ads1262_Reg_Write(INPMUX, 0x01);	
+  reg_write(INPMUX, 0x01);	
   delay(10);  
-  ads1262_Reg_Write(OFCAL0, 0x00);	
+  reg_write(OFCAL0, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(OFCAL1, 0x00);	
+  reg_write(OFCAL1, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(OFCAL2, 0x00);	
+  reg_write(OFCAL2, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(FSCAL0, 0x00);	
+  reg_write(FSCAL0, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(FSCAL1, 0x00);	
+  reg_write(FSCAL1, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(FSCAL2, 0x40);	
+  reg_write(FSCAL2, 0x40);	
   delay(10);  
-  ads1262_Reg_Write(IDACMUX, 0xBB);	
+  reg_write(IDACMUX, 0xBB);	
   delay(10);  
-   ads1262_Reg_Write(IDACMAG, 0x00);	
+   reg_write(IDACMAG, 0x00);	
   delay(10);  
-  ads1262_Reg_Write(REFMUX, 0x00);	
+  reg_write(REFMUX, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(TDACP, 0x00);	
+  reg_write(TDACP, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(TDACN, 0x00);	
+  reg_write(TDACN, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(GPIOCON, 0x00);	
+  reg_write(GPIOCON, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(GPIODIR, 0x00);	
+  reg_write(GPIODIR, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(GPIODAT, 0x00);	
+  reg_write(GPIODAT, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(ADC2CFG, 0x00);	
+  reg_write(ADC2CFG, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(ADC2MUX, 0x01);	
+  reg_write(ADC2MUX, 0x01);	
   delay(10);    
-  ads1262_Reg_Write(ADC2OFC0, 0x00);	
+  reg_write(ADC2OFC0, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(ADC2OFC1, 0x00);	
+  reg_write(ADC2OFC1, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(ADC2FSC0, 0x00);	
+  reg_write(ADC2FSC0, 0x00);	
   delay(10);    
-  ads1262_Reg_Write(ADC2FSC1, 0x40);	
+  reg_write(ADC2FSC1, 0x40);	
   delay(10);
- // ads1262_Start_Read_Data_Continuous();
+ // start_read_data_continuous();
   delay(10);
-  ads1262_Enable_Start();
+  enable_start();
 }
 
-void ads1262::ads1262_Reset()
+void Ads1262::reset()
 {
   digitalWrite(ADS1262_PWDN_PIN, HIGH);
   delay(100);					// Wait 100 mSec
@@ -121,46 +135,46 @@ void ads1262::ads1262_Reset()
   delay(100);
 }
 
-void ads1262::ads1262_Disable_Start()
+void Ads1262::disable_start()
 {
   digitalWrite(ADS1262_START_PIN, LOW);
   delay(20);
 }
 
-void ads1262::ads1262_Enable_Start()
+void Ads1262::enable_start()
 {
   digitalWrite(ADS1262_START_PIN, HIGH);
   delay(20);
 }
 
-void ads1262::ads1262_Hard_Stop (void)
+void Ads1262::hard_stop (void)
 {
   digitalWrite(ADS1262_START_PIN, LOW);
   delay(100);
 }
 
 
-void ads1262::ads1262_Start_Data_Conv_Command (void)
+void Ads1262::start_data_conv_command (void)
 {
-  ads1262_SPI_Command_Data(START);					// Send 0x08 to the ADS1x9x
+  SPI_command_data(START);					// Send 0x08 to the ADS1x9x
 }
 
-void ads1262::ads1262_Soft_Stop (void)
+void Ads1262::soft_stop (void)
 {
-  ads1262_SPI_Command_Data(STOP);                   // Send 0x0A to the ADS1x9x
+  SPI_command_data(STOP);                   // Send 0x0A to the ADS1x9x
 }
 
-void ads1262::ads1262_Start_Read_Data_Continuous (void)
-{
-  //ads1262_SPI_Command_Data(RDATAC);					// Send 0x10 to the ADS1x9x
-}
+// void Ads1262::start_read_data_continuous (void)
+// {
+//   //SPI_command_data(RDATAC);					// Send 0x10 to the ADS1x9x
+// }
 
-void ads1262::ads1262_Stop_Read_Data_Continuous (void)
-{
-  //ads1262_SPI_Command_Data(SDATAC);					// Send 0x11 to the ADS1x9x
-}
+// void Ads1262::stop_read_data_continuous (void)
+// {
+//   //SPI_command_data(SDATAC);					// Send 0x11 to the ADS1x9x
+// }
 
-void ads1262::ads1262_SPI_Command_Data(unsigned char data_in)
+void Ads1262::SPI_command_data(unsigned char data_in)
 {
   byte data[1];
   //data[0] = data_in;
@@ -176,7 +190,7 @@ void ads1262::ads1262_SPI_Command_Data(unsigned char data_in)
 }
 
 //Sends a write command to SCP1000
-void ads1262::ads1262_Reg_Write (unsigned char READ_WRITE_ADDRESS, unsigned char DATA)
+void Ads1262::reg_write (unsigned char READ_WRITE_ADDRESS, unsigned char DATA)
 {
   // now combine the register address and the command into one byte:
   byte dataToSend = READ_WRITE_ADDRESS | WREG;
