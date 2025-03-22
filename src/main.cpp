@@ -6,6 +6,7 @@
 #include <SPI.h>
 #include <ArduinoJson.h>
 #include <main.h>
+#include <sstream>
 
 #define PGA 1                     // Programmable Gain = 1
 #define VREF 2.50                 // Internal reference of 2.5V
@@ -30,6 +31,7 @@ double adc_voltage;
 volatile size_t voltage_buf_size = 32; // Samples
 double *voltage_buf = (double *) malloc(sizeof(double) * 32);
 volatile size_t voltage_buf_idx = 0;
+long sample_rate = 1200;
 
 // Data sending
 volatile bool sendReady = false; // Flag
@@ -53,12 +55,7 @@ void setup() {
   });
 
   // Connect WS client 
-  if(client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
-    Serial.println("Connected to WS server");
-    client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
-  } else {
-    Serial.println("Failed to connect to WS server");
-  }
+  connectServer(); 
 
   // Initialize pins
   pinMode(ADS1262_DRDY_PIN, INPUT);                 // data ready input line
@@ -81,10 +78,7 @@ void loop() {
     client.poll();
   } else {
     Serial.println("ws server disconnected - retrying connection...");
-    if(client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
-      client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); 
-      Serial.println("ws server connected!");
-    }
+    connectServer(); 
   }
   if(sendReady) {
     sendReady = false;
@@ -134,8 +128,9 @@ void recv(WebsocketsMessage message) {
     Serial.println(error.c_str());
     return;
   }
-  long sample_rate = doc["payload"]["sample_rate"];
-  if(sample_rate) {
+  long new_sample_rate = doc["payload"]["sample_rate"];
+  if(new_sample_rate) {
+    sample_rate = new_sample_rate;
     adc.set_sample_rate(sample_rate);
     Serial.printf("Set sample rate: %d\n", sample_rate);
   }
@@ -152,6 +147,10 @@ void recv(WebsocketsMessage message) {
     voltage_buf_idx = 0;
     Serial.printf("Set buffer size: %d\n", buffer_size); 
   }
+
+  if(sample_rate || buffer_size) {
+    client.send(getStatus());
+  }
 };
 
 void send(double * buf, short buf_size) {
@@ -163,6 +162,22 @@ void send(double * buf, short buf_size) {
   }
   serializeJson(doc, outJson);
   client.send(outJson);
+}
+
+const char * getStatus() {
+  std::ostringstream status;
+  status << "{\"topic\":\"adc/status\",\"payload\":{\"Nbuf\":" << voltage_buf_size << ",\"sample_rate\":" << sample_rate << "}}";
+  return status.str().c_str();
+}
+
+void connectServer() {
+  if(client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
+    Serial.println("Connected to WS server");
+    client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
+    client.send(getStatus());
+  } else {
+    Serial.println("Failed to connect to WS server");
+  }
 }
 
 void initWifi() {

@@ -7,3 +7,5 @@ void scanWifi();
 void recv(WebsocketsMessage message);
 void send(double * buf, short buf_size);
 void readVoltage();
+const char * getStatus();
+void connectServer();
