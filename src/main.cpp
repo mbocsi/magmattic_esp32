@@ -181,13 +181,14 @@ const char * getStatus() {
 }
 
 void connectServer() {
-  if(client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
-    Serial.println("Connected to WS server");
-    client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
-    client.send(getStatus());
-  } else {
-    Serial.println("Failed to connect to WS server");
+  Serial.print("Connecting to WS server .");
+  while(!client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
+    Serial.print(".");
+    delay(1000);
   }
+  Serial.printf(" connected! Addr: ws://%s:%d%s\n", WEBSOCKET_ADDR, WEBSOCKET_PORT, "/");
+  client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
+  client.send(getStatus());
 }
 
 void initWifi() {
