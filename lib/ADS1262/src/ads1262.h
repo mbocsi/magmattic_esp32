@@ -92,7 +92,7 @@ class Ads1262
     // static void start_read_data_continuous (void);
     // static void stop_read_data_continuous (void);
     static char* read_data(void);
-    static void set_sample_rate(const unsigned int rate);
+    static bool set_sample_rate(const unsigned int rate);
 };
 
 #endif

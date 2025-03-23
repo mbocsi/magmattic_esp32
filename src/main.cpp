@@ -16,11 +16,11 @@
 using namespace websockets;
 
 // Wifi
-const char * SSID = "magpi";
-const char * PASSWORD = "";
+const char * SSID = "Magpi";
+const char * PASSWORD = "magmattic2025";
 
 // Websockets
-const char * WEBSOCKET_ADDR = "192.168.4.1";
+const char * WEBSOCKET_ADDR = "10.0.0.1";
 const uint32_t WEBSOCKET_PORT = 44444;
 
 // ADC
@@ -74,6 +74,15 @@ void setup() {
 }
 
 void loop() {
+  if(WiFi.status() != WL_CONNECTED) {
+    Serial.print("wifi disconnected - reconnecting");
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.print('.');
+      delay(1000);
+    }
+    Serial.print(" connected! IP: ");
+    Serial.println(WiFi.localIP());
+  }
   if (client.available()) {
     client.poll();
   } else {
@@ -130,9 +139,10 @@ void recv(WebsocketsMessage message) {
   }
   long new_sample_rate = doc["payload"]["sample_rate"];
   if(new_sample_rate) {
-    sample_rate = new_sample_rate;
-    adc.set_sample_rate(sample_rate);
-    Serial.printf("Set sample rate: %d\n", sample_rate);
+    if(adc.set_sample_rate(sample_rate)) {
+      sample_rate = new_sample_rate;
+      Serial.printf("Set sample rate: %d\n", sample_rate);
+    }
   }
 
   long buffer_size = doc["payload"]["Nbuf"];

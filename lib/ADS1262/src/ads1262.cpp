@@ -40,16 +40,18 @@ char* Ads1262::read_data()
 	return SPI_Dummy_Buff;
 }
 
-void Ads1262::set_sample_rate(const unsigned int rate) {
+bool Ads1262::set_sample_rate(const unsigned int rate) {
   if(SAMPLE_RATE.find(rate) == SAMPLE_RATE.end()) {
-    return;
+    return false;
   }
   
   int code = SAMPLE_RATE[rate];
   hard_stop();
+  delay(350);
   reg_write(MODE2, code); 
   delay(10);
   enable_start();
+  return true;
 }
 
 void Ads1262::init()
