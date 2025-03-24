@@ -20,7 +20,7 @@ const char * SSID = "Magpi";
 const char * PASSWORD = "magmattic2025";
 
 // Websockets
-const char * WEBSOCKET_ADDR = "10.0.0.1";
+const char * WEBSOCKET_ADDR = "magpi.local";
 const uint32_t WEBSOCKET_PORT = 44444;
 
 // ADC
