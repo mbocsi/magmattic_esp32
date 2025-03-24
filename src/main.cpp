@@ -47,7 +47,7 @@ void setup() {
   // Connect Wifi
   scanWifi();
   initWifi(); 
-  delay(100);
+  delay(300);
 
   // Attach recv handler
   client.onMessage([&](WebsocketsMessage message) {
@@ -181,14 +181,14 @@ const char * getStatus() {
 }
 
 void connectServer() {
-  Serial.print("Connecting to WS server .");
-  while(!client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
-    Serial.print(".");
+  Serial.println("Connecting to WS server");
+  if(!client.connect(WEBSOCKET_ADDR, WEBSOCKET_PORT, "/")) {
     delay(1000);
+  } else {
+    Serial.printf("WS server connected! Addr: ws://%s:%d%s\n", WEBSOCKET_ADDR, WEBSOCKET_PORT, "/");
+    client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
+    client.send(getStatus());
   }
-  Serial.printf(" connected! Addr: ws://%s:%d%s\n", WEBSOCKET_ADDR, WEBSOCKET_PORT, "/");
-  client.send("{\"topic\":\"subscribe\",\"payload\":{\"topics\":[\"adc/command\"]}}"); // Subscriber message
-  client.send(getStatus());
 }
 
 void initWifi() {
