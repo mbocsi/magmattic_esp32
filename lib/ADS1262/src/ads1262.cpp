@@ -49,7 +49,7 @@ bool Ads1262::set_sample_rate(const unsigned int rate) {
   hard_stop();
   delay(350);
   reg_write(MODE2, code); 
-  delay(10);
+  delay(200);
   enable_start();
   return true;
 }

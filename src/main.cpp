@@ -139,7 +139,7 @@ void recv(WebsocketsMessage message) {
   }
   long new_sample_rate = doc["payload"]["sample_rate"];
   if(new_sample_rate) {
-    if(adc.set_sample_rate(sample_rate)) {
+    if(adc.set_sample_rate(new_sample_rate)) {
       sample_rate = new_sample_rate;
       Serial.printf("Set sample rate: %d\n", sample_rate);
     }
