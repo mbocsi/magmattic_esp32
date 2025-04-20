@@ -192,7 +192,6 @@ void connectServer() {
 }
 
 void initWifi() {
-  delay(5000);
   uint8_t baseMac[6];
   
   // Get MAC address of the WiFi station interface
